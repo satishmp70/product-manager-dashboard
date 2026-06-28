@@ -1,13 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { IProductRepository } from '../interfaces/product-repository.interface';
+import {
+  IProductRepository,
+  ProductCreateData,
+  ProductFindParams,
+  ProductUpdateData,
+} from '../interfaces/product-repository.interface';
 import { Product, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductRepository implements IProductRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: Prisma.ProductCreateInput): Promise<Product> {
+  async create(data: ProductCreateData): Promise<Product> {
     return this.prisma.product.create({ data });
   }
 
@@ -25,34 +30,29 @@ export class ProductRepository implements IProductRepository {
     });
   }
 
-  async update(id: string, data: Prisma.ProductUpdateInput): Promise<Product> {
+  async update(id: string, data: ProductUpdateData): Promise<Product> {
     return this.prisma.product.update({
       where: { id },
-      data,
+      data: data as Prisma.ProductUpdateInput,
     });
   }
 
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    where?: Prisma.ProductWhereInput;
-    orderBy?: Prisma.ProductOrderByWithRelationInput;
-  }): Promise<any[]> {
+  async findAll(params: ProductFindParams): Promise<Product[]> {
     const { skip, take, where, orderBy } = params;
     return this.prisma.product.findMany({
       skip,
       take,
-      where: { ...where, isDeleted: false },
-      orderBy,
+      where: { ...where, isDeleted: false } as Prisma.ProductWhereInput,
+      orderBy: orderBy as Prisma.ProductOrderByWithRelationInput,
       include: {
         category: true,
       },
     });
   }
 
-  async count(params: { where?: Prisma.ProductWhereInput }): Promise<number> {
+  async count(params: { where?: Record<string, unknown> }): Promise<number> {
     return this.prisma.product.count({
-      where: { ...params.where, isDeleted: false },
+      where: { ...params.where, isDeleted: false } as Prisma.ProductWhereInput,
     });
   }
 }

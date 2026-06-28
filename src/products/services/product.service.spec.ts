@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductService } from './product.service';
 import { NotFoundException } from '@nestjs/common';
+import { FileStorageService } from '../../common/services/file-storage.service';
 
 describe('ProductService', () => {
   let service: ProductService;
   let mockProductRepo: any;
   let mockCategoryRepo: any;
+  let mockFileStorage: any;
 
   beforeEach(async () => {
     mockProductRepo = {
@@ -20,6 +22,11 @@ describe('ProductService', () => {
       findById: jest.fn(),
     };
 
+    mockFileStorage = {
+      delete: jest.fn(),
+      getPublicUploadPath: jest.fn((filePath: string) => `/uploads/${filePath.split(/[\\/]/).pop()}`),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductService,
@@ -30,6 +37,10 @@ describe('ProductService', () => {
         {
           provide: 'ICategoryRepository',
           useValue: mockCategoryRepo,
+        },
+        {
+          provide: FileStorageService,
+          useValue: mockFileStorage,
         },
       ],
     }).compile();

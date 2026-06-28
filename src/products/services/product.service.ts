@@ -3,8 +3,10 @@ import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import type { IProductRepository } from '../interfaces/product-repository.interface';
 import type { ICategoryRepository } from '../../categories/interfaces/category-repository.interface';
-import { deleteFile } from '../../common/utils/file-upload.utils';
+import { FileStorageService } from '../../common/services/file-storage.service';
 import { Product } from '@prisma/client';
+
+const PRODUCT_SORT_FIELDS = new Set(['name', 'price', 'createdAt']);
 
 @Injectable()
 export class ProductService {
@@ -13,20 +15,21 @@ export class ProductService {
     private readonly productRepository: IProductRepository,
     @Inject('ICategoryRepository')
     private readonly categoryRepository: ICategoryRepository,
+    private readonly fileStorage: FileStorageService,
   ) {}
 
   async create(createProductDto: CreateProductDto, imagePath?: string): Promise<Product> {
     // Verify category exists
     const category = await this.categoryRepository.findById(createProductDto.categoryId);
     if (!category) {
-      if (imagePath) deleteFile(imagePath);
+      if (imagePath) this.fileStorage.delete(imagePath);
       throw new NotFoundException(`Category with ID "${createProductDto.categoryId}" not found`);
     }
 
     return this.productRepository.create({
       name: createProductDto.name,
       price: createProductDto.price,
-      image: imagePath ? `/uploads/${imagePath.split(/[\\/]/).pop()}` : null,
+      image: imagePath ? this.fileStorage.getPublicUploadPath(imagePath) : null,
       category: {
         connect: { id: createProductDto.categoryId },
       },
@@ -96,7 +99,7 @@ export class ProductService {
 
     // Sorting
     const orderBy: any = {};
-    const sortBy = params.sortBy || 'createdAt';
+    const sortBy = PRODUCT_SORT_FIELDS.has(params.sortBy || '') ? params.sortBy! : 'createdAt';
     const sortOrder = params.sortOrder || 'desc';
     orderBy[sortBy] = sortOrder;
 
@@ -136,7 +139,7 @@ export class ProductService {
     if (updateProductDto.categoryId) {
       const category = await this.categoryRepository.findById(updateProductDto.categoryId);
       if (!category) {
-        if (newImagePath) deleteFile(newImagePath);
+        if (newImagePath) this.fileStorage.delete(newImagePath);
         throw new NotFoundException(`Category with ID "${updateProductDto.categoryId}" not found`);
       }
       updateData.categoryId = updateProductDto.categoryId;
@@ -153,9 +156,9 @@ export class ProductService {
     if (newImagePath) {
       // Delete old image if it exists
       if (product.image) {
-        deleteFile(product.image);
+        this.fileStorage.delete(product.image);
       }
-      updateData.image = `/uploads/${newImagePath.split(/[\\/]/).pop()}`;
+      updateData.image = this.fileStorage.getPublicUploadPath(newImagePath);
     }
 
     return this.productRepository.update(id, updateData);

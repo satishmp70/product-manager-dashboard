@@ -11,7 +11,6 @@ import * as express from 'express';
 import { join } from 'path';
 
 async function bootstrap() {
-  console.log('DATABASE_URL from process.env:', process.env.DATABASE_URL);
   const app = await NestFactory.create(AppModule);
 
   // Path prefix
